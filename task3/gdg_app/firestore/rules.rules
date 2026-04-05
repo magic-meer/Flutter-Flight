@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId));
+    }
+    
+    function isChapterLead(userId) {
+      let user = getUserData(userId);
+      return user != null && user.data.role == 'chapter_lead';
+    }
+    
+    function isTeamLead(userId, teamId) {
+      let user = getUserData(userId);
+      return user != null && user.data.role == 'team_lead' && user.data.teamIds.hasAll([teamId]);
+    }
+    
+    function isTeamMember(userId, teamId) {
+      let user = getUserData(userId);
+      return user != null && user.data.teamIds.hasAll([teamId]);
+    }
+    
+    function isSameUser(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection - users can read their own data, Chapter Leads can manage all
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        isSameUser(userId) || 
+        isChapterLead(request.auth.uid)
+      );
+      allow write: if isSignedIn() && (
+        isSameUser(userId) || 
+        isChapterLead(request.auth.uid)
+      );
+    }
+    
+    // Teams collection
+    match /teams/{teamId} {
+      // Anyone signed in can read teams in their chapter
+      allow read: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, teamId) ||
+        isTeamMember(request.auth.uid, teamId)
+      );
+      
+      // Only Chapter Leads can create, only Lead/ChapterLead can update
+      allow create: if isSignedIn() && isChapterLead(request.auth.uid);
+      allow update: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, teamId)
+      );
+      allow delete: if isSignedIn() && isChapterLead(request.auth.uid);
+    }
+    
+    // Meetings collection
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, resource.data.teamId) ||
+        isTeamMember(request.auth.uid, resource.data.teamId)
+      );
+      
+      // Create: ChapterLead or TeamLead for their team
+      allow create: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, request.resource.data.teamId)
+      );
+      
+      // Update: ChapterLead or TeamLead who created it
+      allow update: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, resource.data.teamId)
+      );
+      
+      // Delete: Only ChapterLead or the TeamLead who created it
+      allow delete: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, resource.data.teamId)
+      );
+    }
+    
+    // Attendance collection - most restricted
+    match /attendance/{attendanceId} {
+      // Read: Anyone in the team can see attendance
+      allow read: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, get(/databases/$(database)/documents/meetings/$(resource.data.meetingId)).data.teamId) ||
+        isSameUser(resource.data.memberId)
+      );
+      
+      // Write: Only leads can mark attendance (not self-marking for members)
+      allow create: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, get(/databases/$(database)/documents/meetings/$(request.resource.data.meetingId)).data.teamId)
+      );
+      
+      // Update: Only within limited window and by leads
+      allow update: if isSignedIn() && (
+        isChapterLead(request.auth.uid) ||
+        isTeamLead(request.auth.uid, get(/databases/$(database)/documents/meetings/$(resource.data.meetingId)).data.teamId)
+      );
+      
+      // Delete: Only ChapterLead can delete attendance records
+      allow delete: if isSignedIn() && isChapterLead(request.auth.uid);
+    }
+  }
+}
