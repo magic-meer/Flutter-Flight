@@ -1,0 +1,72 @@
+Final Project: Smart Home Controller (Flutter + MQTT)
+Objective:
+Build a Flutter mobile application to control and monitor smart home devices using MQTT.
+Project Overview:
+The app acts as a smart home controller where users can:
+- Turn devices ON/OFF
+- View real-time device states
+- Communicate via MQTT topics
+MQTT Setup:
+Use HiveMQ public broker or Mosquitto local broker.
+Core Features:
+1. Connection Screen:
+- Broker URL, Port, Client ID
+- Connect/Disconnect button
+- Connection status display
+2. Home Dashboard:
+- Light (ON/OFF)
+- Fan (ON/OFF)
+- AC (ON/OFF)
+3. MQTT Communication:
+Topics:
+home/light
+home/fan
+home/ac
+Payload:
+ON / OFF
+4. Real-Time Sync:
+UI updates based on MQTT messages.
+5. MQTT Testing:
+Use MQTTX to simulate devices.
+
+Technical Requirements:
+- State Management: Riverpod or Bloc
+- Packages: mqtt_client, flutter_riverpod or flutter_bloc
+Code Structure:
+lib/
+core/
+services/mqtt_service.dart
+models/
+screens/
+widgets/
+Bonus Features:
+- Add device dynamically
+- Dark mode
+- Save connection
+- Custom topics
+Evaluation Criteria:
+- Functionality: 30%
+- Code quality: 25%
+- UI/UX: 20%
+- Real-time handling: 15%
+- Bonus: 10%
+Rules:
+- No unnecessary hardcoding
+- Proper error handling
+- Show loading states
+- Separate UI and logic
+Submission:
+- GitHub repo
+- APK
+- README with topics, testing steps, screenshots
+Testing Steps:
+
+1. Open MQTTX
+2. Connect to broker
+3. Subscribe to home/light
+4. Toggle in app
+5. Publish ON/OFF from MQTTX
+Goal:
+Understand MQTT, state management, clean architecture, and async streams.
+
+
